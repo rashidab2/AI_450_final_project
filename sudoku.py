@@ -1,78 +1,4 @@
-from itertools import permutations
-import time
-
-def solve_cryptarithmetic_backtracking(puzzle):
-    letters = set(''.join(puzzle))  # Collect all unique letters
-    digits = '0123456789'
-
-    for perm in permutations(digits, len(letters)):
-        solution = dict(zip(letters, perm))
-        if check_solution(puzzle, solution):
-            return solution
-    return None
-
-def check_solution(puzzle, solution):
-    # Replace letters with digits according to the proposed solution
-    def apply_solution(word):
-        return int(''.join(solution.get(letter, letter) for letter in word))
-
-    s1, s2, s3 = puzzle
-    return apply_solution(s1) + apply_solution(s2) == apply_solution(s3)
-
-def print_solution(puzzle, solution):
-    for word in puzzle:
-        print(' '.join(solution.get(letter, letter) for letter in word))
-    print()
-
-# Define the puzzle: SEND + MORE = MONEY
-puzzle = ('SEND', 'MORE', 'MONEY')
-
-# Measure the time taken to solve the puzzle
-start_time = time.time()
-solution = solve_cryptarithmetic_backtracking(puzzle)
-end_time = time.time()
-
-if solution:
-    print("Backtracking solution:")
-    print_solution(puzzle, solution)
-else:
-    print("No solution found.")
-
-print(f"Time taken for backtracking: {end_time - start_time} seconds")
-
-import random
-
-def initial_solution(letters):
-    digits = list(range(10))
-    random.shuffle(digits)
-    return dict(zip(letters, digits))
-
-def evaluate(solution, s1, s2, s3):
-    def word_to_number(word, mapping):
-        return int(''.join(str(mapping[letter]) for letter in word))
-    
-    num1 = word_to_number(s1, solution)
-    num2 = word_to_number(s2, solution)
-    num3 = word_to_number(s3, solution)
-    
-    if num1 + num2 == num3:
-        return 0  # Correct solution
-    else:
-        return abs(num3 - (num1 + num2))  # Difference from correct solution
-
-def get_neighbors(solution):
-    neighbors = []
-    letters = list(solution.keys())
-    for i in range(len(letters)):
-        for j in range(i + 1, len(letters)):
-            neighbor = solution.copy()
-            # Swap two values
-            neighbor[letters[i]], neighbor[letters[j]] = neighbor[letters[j]], neighbor[letters[i]]
-            neighbors.append(neighbor)
-    return neighbors
-
-def local_search(s1, s2, s3):
-    letters = set(s1 + s2 + s3)  import numpy as np
+import numpy as np
 import time
 import random
 
@@ -264,55 +190,32 @@ def get_neighbors(board, original_board, tabu_list):
                 neighbors.append(new_board)
     return neighbors
 
-def tabu_search(board, max_iterations=1000, tabu_size=50):
+def tabu_search(board, tabu_size=50):
     original_board = np.array(board, dtype=int)
-    current_solution = initial_solution(board)
-    current_fitness = calculate_fitness(current_solution)
-    best_solution = current_solution
-    best_fitness = current_fitness
+    current_solution = initial_solution(original_board)
+    
+    if is_valid_board(current_solution):
+        return current_solution  # If the initial board is already valid
+    
     tabu_list = set()
     tabu_list.add(tuple(map(tuple, current_solution)))
-    #correcting bugs
-    print("Starting tabu search...")  # To confirm the function is called
 
-    for iteration in range(max_iterations):  # Indicates the current iteration
-
+    while True:
         neighbors = get_neighbors(current_solution, original_board, tabu_list)
         if not neighbors:
-            print("Error: No neighbors found")  # No neighbors generated
+            current_solution = initial_solution(original_board)  # Restart if no neighbors
+            continue
 
-        neighbors = sorted(neighbors, key=lambda x: calculate_fitness(x), reverse=True)
-        
         for neighbor in neighbors:
-            if not any(np.array_equal(neighbor, tabu_board) for tabu_board in tabu_list):
-                # Check if the board is valid before calculating its fitness
-                if is_valid_board(neighbor):
-                    neighbor_fitness = calculate_fitness(neighbor)
-                    if neighbor_fitness > best_fitness:
-                        best_solution = neighbor
-                        best_fitness = neighbor_fitness
-                        print("Found better neighbor. Updating best solution.")
-                        found_better = True
-                        break
-                else:
-                    break
-        # Update the current solution
-        current_solution = best_solution
-        current_fitness = best_fitness
-        
+            if is_valid_board(neighbor):
+                return neighbor  # Return the first valid board found
+        # Update the current solution to a random neighbor (not necessarily a better one)
+        current_solution = random.choice(neighbors)
         # Update the tabu list
         tabu_list.add(tuple(map(tuple, current_solution)))
         if len(tabu_list) > tabu_size:
-            tabu_list.pop()
+            tabu_list.pop(0)  # Ensure the tabu list doesn't exceed its size limit
         
-        # If we've found a solution
-        if current_fitness == 243:
-            print("Solution found")  # Perfect solution found
-            break
-        elif iteration == max_iterations - 1:
-            print("Error: Reached maximum iterations without solution")  # Max iterations reached
-
-    return best_solution
 
 
 # Example Sudoku board
@@ -393,37 +296,17 @@ boards = [board1, board2, board3]
 for board in boards:
         genetic_sudoku_solver(board)
 
-def test_tabu_search(boards, max_iterations, tabu_size):
+def test_tabu_search(boards,tabu_size):
     for i, board in enumerate(boards):
         print(f"Testing board {i + 1}")
-        solution = tabu_search(board, max_iterations, tabu_size)
+        solution = tabu_search(board,tabu_size)
         for row in solution:
             print(row)
         if is_valid_board(solution):
             print(f"Board {i + 1} solved successfully:\n{np.matrix(solution)}\n")
         else:
             print(f"Board {i + 1} was not solved successfully.\n")
-max_iterations = 50000
 tabu_size = 50
 boards = [board1, board2, board3]
 # Test the Tabu Search on the defined boards
-test_tabu_search(boards, max_iterations, tabu_size)
-# All unique letters
-    current_solution = initial_solution(letters)
-    current_evaluation = evaluate(current_solution, s1, s2, s3)
-    
-    while current_evaluation != 0:
-        neighbors = get_neighbors(current_solution)
-        current_solution = min(neighbors, key=lambda sol: evaluate(sol, s1, s2, s3))
-        current_evaluation = evaluate(current_solution, s1, s2, s3)
-        
-    return current_solution
-
-# Define the puzzle: SEND + MORE = MONEY
-s1 = "SEND"
-s2 = "MORE"
-s3 = "MONEY"
-
-# Solve the puzzle
-solution = local_search(s1, s2, s3)
-print(f"Solution: {solution}")
+test_tabu_search(boards,tabu_size)
