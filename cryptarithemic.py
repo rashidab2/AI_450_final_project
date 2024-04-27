@@ -1,41 +1,120 @@
-def solve_cryptarithmetic(puzzle):
-    words = puzzle.split()
-    unique_chars = set(''.join(words))
-    if len(unique_chars) > 10:
-        return "Invalid puzzle: More than 10 unique characters"
-    
-    chars = ''.join(words)
-    leading_chars = set([word[0] for word in words])
-    if len(chars) != len(set(chars)):
-        return "Invalid puzzle: Repeated characters"
-    
-    if len(leading_chars) > 2:
-        return "Invalid puzzle: More than 2 leading characters"
-    
-    def assign_digit(char_index, used_digits):
-        if char_index == len(chars):
-            return True
-        
-        char = chars[char_index]
-        for digit in range(10):
-            if (char in leading_chars and digit == 0) or (char in used_digits):
-                continue
-            mapping[char] = digit
-            if assign_digit(char_index + 1, used_digits | {char}):
-                return True
-        del mapping[char]
-        return False
-    
-    mapping = {}
-    if assign_digit(0, set()):
-        result = ''
-        for word in words:
-            num = ''.join(str(mapping[char]) for char in word)
-            result += f'{word} = {int(num)}\n'
-        return result
-    else:
-        return "No solution found"
+from itertools import permutations
+import time
 
-# Example usage
-puzzle = "SEND + MORE = MONEY"
-print(solve_cryptarithmetic(puzzle))
+def solve_cryptarithmetic_backtracking(puzzle):
+    letters = set(''.join(puzzle))  # Collect all unique letters
+    digits = '0123456789'
+
+    for perm in permutations(digits, len(letters)):
+        solution = dict(zip(letters, perm))
+        if check_solution(puzzle, solution):
+            return solution
+    return None
+
+def check_solution(puzzle, solution):
+    # Replace letters with digits according to the proposed solution
+    def apply_solution(word):
+        return int(''.join(solution.get(letter, letter) for letter in word))
+
+    s1, s2, s3 = puzzle
+    return apply_solution(s1) + apply_solution(s2) == apply_solution(s3)
+
+def print_solution(puzzle, solution):
+    for word in puzzle:
+        print(' '.join(solution.get(letter, letter) for letter in word))
+    print()
+
+# Define the puzzle: SEND + MORE = MONEY
+puzzle = ('SEND', 'MORE', 'MONEY')
+
+# Measure the time taken to solve the puzzle
+start_time = time.time()
+solution = solve_cryptarithmetic_backtracking(puzzle)
+end_time = time.time()
+
+if solution:
+    print("Backtracking solution:")
+    print_solution(puzzle, solution)
+else:
+    print("No solution found.")
+
+print(f"Time taken for backtracking: {end_time - start_time} seconds")
+
+import random
+
+def initial_solution(letters):
+    digits = list(range(10))
+    random.shuffle(digits)
+    return dict(zip(letters, digits))
+
+def evaluate(solution, s1, s2, s3):
+    def word_to_number(word, mapping):
+        return int(''.join(str(mapping[letter]) for letter in word))
+    
+    num1 = word_to_number(s1, solution)
+    num2 = word_to_number(s2, solution)
+    num3 = word_to_number(s3, solution)
+    
+    if num1 + num2 == num3:
+        return 0  # Correct solution
+    else:
+        return abs(num3 - (num1 + num2))  # Difference from correct solution
+
+def get_neighbors(solution):
+    neighbors = []
+    letters = list(solution.keys())
+    for i in range(len(letters)):
+        for j in range(i + 1, len(letters)):
+            neighbor = solution.copy()
+            # Swap two values
+            neighbor[letters[i]], neighbor[letters[j]] = neighbor[letters[j]], neighbor[letters[i]]
+            neighbors.append(neighbor)
+    return neighbors
+
+def tabu_search(s1, s2, s3, tabu_tenure):
+    letters = set(s1 + s2 + s3)
+    current_solution = initial_solution(letters)
+    # Initialize Tabu list
+    tabu_list = []
+    while True:
+        current_evaluation = evaluate(current_solution, s1, s2, s3)
+        # If a valid solution is found, return it
+        if current_evaluation == 0:
+            return current_solution
+        neighbors = get_neighbors(current_solution)
+        # Filter out neighbors that are in the tabu list
+        neighbors = [neighbor for neighbor in neighbors if neighbor not in tabu_list]
+        # If no non-tabu neighbors, get a new random solution
+        if not neighbors:
+            current_solution = initial_solution(letters)
+            continue
+        # Evaluate neighbors and select one randomly
+        # Since we are not necessarily looking for the best, but just a valid one
+        # we can pick any neighbor that improves upon the current solution or is not worse.
+        neighbors.sort(key=lambda sol: evaluate(sol, s1, s2, s3))
+        for neighbor in neighbors:
+            if evaluate(neighbor, s1, s2, s3) <= current_evaluation:
+                current_solution = neighbor
+                break
+        # Update the Tabu list
+        tabu_list.append(current_solution)
+        if len(tabu_list) > tabu_tenure:
+            tabu_list.pop(0)
+        return tabu_list
+#Note that tabu search sometimes doesn't come up with a valid solution 
+# Other function definitions (initial_solution, evaluate, get_neighbors) remain unchanged.
+# Define the puzzle: SEND + MORE = MONEY
+s1 = "SEND"
+s2 = "MORE"
+s3 = "MONEY"
+# Parameters for Tabu Search
+tabu_tenure = 50
+
+# Solve the puzzle
+start_time = time.time()  # Start a timer for the search operation
+solution = tabu_search(s1, s2, s3, tabu_tenure)
+end_time = time.time()  # End the timer after finding the solution
+
+# Print the solution and the time taken to find it
+print(f"Solution: {solution}")
+print(f"Time taken: {end_time - start_time} seconds")
