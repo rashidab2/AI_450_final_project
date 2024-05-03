@@ -1,6 +1,7 @@
 import numpy as np
 import time
 import random
+from collections import deque
 
 # Backtracking Search for Sudoku
 def is_valid(board, row, col, num):
@@ -28,90 +29,6 @@ def find_empty_location(board):
             if board[i][j] == 0:
                 return (i, j)
     return None
-
-# Genetic Algorithm Functions
-def fixed_positions(board):
-    return [(i, j) for i in range(9) for j in range(9) if board[i][j] != 0]
-
-def create_individual(board, fixed):
-    individual = np.copy(board)
-    for i in range(9):
-        missing = list(set(range(1, 10)) - set(individual[i, :]))
-        random.shuffle(missing)
-        for j in range(9):
-            if individual[i, j] == 0:
-                individual[i, j] = missing.pop()
-    return individual
-
-def calculate_fitness(individual):
-    score = 0
-    for i in range(9):
-        score += len(set(individual[i, :]))  # Rows
-        score += len(set(individual[:, i]))  # Columns
-        block = individual[i//3*3:(i//3+1)*3, i%3*3:(i%3+1)*3]
-        score += len(set(block.flatten()))  # Blocks
-    return score
-
-def selection(population, fitness_scores):
-    # Create a cumulative sum of fitness scores
-    cumulative_fitness = np.cumsum(fitness_scores)
-    total_fitness = cumulative_fitness[-1]
-    
-    # Select individuals based on their fitness probability
-    new_population = []
-    for _ in range(len(population)):
-        # Generate a random number in the range of the total fitness
-        r = random.uniform(0, total_fitness)
-        # Find the individual that corresponds to the random number
-        for i, individual_fitness in enumerate(cumulative_fitness):
-            if r <= individual_fitness:
-                new_population.append(population[i])
-                break
-    return new_population
-
-def crossover(parent1, parent2, fixed):
-    child = np.copy(parent1)
-    for i in range(9):
-        if random.random() > 0.5:
-            for j in range(9):
-                if (i, j) not in fixed:
-                    child[i, j] = parent2[i, j]
-    return child
-
-def mutate(individual, fixed, mutation_rate=0.05):
-    for i in range(9):
-        if random.random() < mutation_rate:
-            j1, j2 = random.sample([j for j in range(9) if (i, j) not in fixed], 2)
-            individual[i, j1], individual[i, j2] = individual[i, j2], individual[i, j1]
-    return individual
-
-# Genetic Algorithm for Sudoku
-def genetic_algorithm_sudoku(board, population_size=100, generations=1000):
-    fixed = fixed_positions(board)
-    population = [create_individual(board, fixed) for _ in range(population_size)]
-
-    for generation in range(generations):
-        fitness_scores = [calculate_fitness(individual) for individual in population]
-        if max(fitness_scores) == 243:  # 243 is the maximum fitness score for a solved Sudoku
-            return population[fitness_scores.index(max(fitness_scores))]
-
-        # Selection
-        population = selection(population, fitness_scores)
-        
-        # Create the next generation
-        new_population = []
-        for i in range(0, population_size, 2):
-            parent1, parent2 = population[i], population[i+1]
-            child1, child2 = crossover(parent1, parent2, fixed), crossover(parent2, parent1, fixed)
-            child1, child2 = mutate(child1, fixed), mutate(child2, fixed)
-            new_population.extend([child1, child2])
-        population = new_population
-
-    # If no solution found, return the best individual
-    best_fitness = max(fitness_scores)
-    best_individual = population[fitness_scores.index(best_fitness)]
-    return best_individual
-
 
 # Tabu Search for Sudoku
 def initial_solution(board):
@@ -190,15 +107,14 @@ def get_neighbors(board, original_board, tabu_list):
                 neighbors.append(new_board)
     return neighbors
 
-def tabu_search(board, tabu_size=50):
+def tabu_search(board, tabu_size=50, time_limit=60):
     original_board = np.array(board, dtype=int)
     current_solution = initial_solution(original_board)
     
     if is_valid_board(current_solution):
         return current_solution  # If the initial board is already valid
     
-    tabu_list = set()
-    tabu_list.add(tuple(map(tuple, current_solution)))
+    tabu_list = [tuple(map(tuple, current_solution))]  # Initialize tabu list with the initial solution
 
     while True:
         neighbors = get_neighbors(current_solution, original_board, tabu_list)
@@ -209,15 +125,60 @@ def tabu_search(board, tabu_size=50):
         for neighbor in neighbors:
             if is_valid_board(neighbor):
                 return neighbor  # Return the first valid board found
+
         # Update the current solution to a random neighbor (not necessarily a better one)
         current_solution = random.choice(neighbors)
-        # Update the tabu list
-        tabu_list.add(tuple(map(tuple, current_solution)))
+
+        # Convert the current solution to a tuple of tuples and add it to the tabu list
+        current_config = tuple(map(tuple, current_solution))
+        tabu_list.append(current_config)
+
+        # Ensure the tabu list doesn't exceed its size limit
         if len(tabu_list) > tabu_size:
-            tabu_list.pop(0)  # Ensure the tabu list doesn't exceed its size limit
+            tabu_list.pop(0)     
+
+'''def tabu_search(board, tabu_size=50, time_limit=60):
+    start_time = time.time()  # Record the start time
+    original_board = np.array(board, dtype=int)
+    current_solution = initial_solution(original_board)
+    
+    if is_valid_board(current_solution):
+        return current_solution  # If the initial board is already valid
+    
+    tabu_list = [tuple(map(tuple, current_solution))]  # Initialize tabu list with the initial solution
+
+    while time.time() - start_time < time_limit:  # Continue until the time limit is reached
+        neighbors = get_neighbors(current_solution, original_board, tabu_list)
+        if not neighbors:
+            # No valid neighbors, restart with a new initial solution
+            current_solution = initial_solution(original_board)
+            tabu_list = [tuple(map(tuple, current_solution))]
+            continue
+
+        # Evaluate the neighbors and choose the best one based on some criteria (e.g., least conflicts)
+        neighbors.sort(key=lambda x: calculate_fitness(x), reverse=True)
+        best_neighbor = neighbors[0]
         
+        if is_valid_board(best_neighbor):
+            return best_neighbor  # Return the first valid board found
+        
+        # Update the current solution to the best neighbor
+        current_solution = best_neighbor
 
+        # Convert the current solution to a tuple of tuples and add it to the tabu list
+        current_config = tuple(map(tuple, current_solution))
+        tabu_list.append(current_config)
+        
+        # Ensure the tabu list doesn't exceed its size limit
+        if len(tabu_list) > tabu_size:
+            tabu_list.pop(0)  # Remove the oldest element in the tabu list
 
+    # If the time limit is reached, return the current solution even if it's not valid
+    return current_solution        
+# This solution was implemented because the time it take to reach a solution is far to much, 
+#I stop it right at the time_limit for testing purpose, it was runned without the time limit
+It takes awhile.
+'''
 # Example Sudoku board
 board1 = [
         [5, 3, 0, 0, 7, 0, 0, 0, 0],
@@ -280,33 +241,16 @@ for board in boards:
         board_copy = [row[:] for row in board]
         test_backtracking_sudoku_solver(board_copy, solver)
 
-def genetic_sudoku_solver(board):
-    start_time = time.time()
-    solution = genetic_algorithm_sudoku(board)
-    end_time = time.time()
-    if calculate_fitness(solution) == 243:
-        print("Found a solution with genetic algorithm:")
-        print(solution)
-    else:
-        print("No perfect solution found. Best attempt:")
-        print(solution)
-    print(f"Fitness score: {calculate_fitness(solution)}\n")
-    print(f"Execution time: {end_time - start_time:.4f} seconds\n")
-boards = [board1, board2, board3]
-for board in boards:
-        genetic_sudoku_solver(board)
-
-def test_tabu_search(boards,tabu_size):
+def test_tabu_search(boards, tabu_size):
     for i, board in enumerate(boards):
         print(f"Testing board {i + 1}")
-        solution = tabu_search(board,tabu_size)
+        solution = tabu_search(board, tabu_size)  # Pass each individual board to the function
         for row in solution:
             print(row)
         if is_valid_board(solution):
             print(f"Board {i + 1} solved successfully:\n{np.matrix(solution)}\n")
         else:
             print(f"Board {i + 1} was not solved successfully.\n")
-tabu_size = 50
-boards = [board1, board2, board3]
-# Test the Tabu Search on the defined boards
-test_tabu_search(boards,tabu_size)
+
+# Now you can call test_tabu_search with the list of boards
+test_tabu_search(boards, tabu_size=50)
