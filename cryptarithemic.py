@@ -4,25 +4,33 @@ import time
 def solve_cryptarithmetic_backtracking(puzzle):
     letters = set(''.join(puzzle))  # Collect all unique letters
     digits = '0123456789'
+    letter_permutations = generate_permutations(digits, len(letters))
 
-    for perm in permutations(digits, len(letters)):
+    for perm in letter_permutations:
         solution = dict(zip(letters, perm))
         if check_solution(puzzle, solution):
             return solution
     return None
 
+def generate_permutations(elements, length):
+    # Base case: if the length is 1, yield each element
+    if length == 1:
+        for element in elements:
+            yield (element,)
+    else:
+        # Recursive case: for each permutation of length - 1,
+        # prepend each element
+        for perm in generate_permutations(elements, length - 1):
+            for element in elements:
+                if element not in perm:
+                    yield (element,) + perm
+
 def check_solution(puzzle, solution):
-    # Replace letters with digits according to the proposed solution
     def apply_solution(word):
         return int(''.join(solution.get(letter, letter) for letter in word))
-
+    
     s1, s2, s3 = puzzle
     return apply_solution(s1) + apply_solution(s2) == apply_solution(s3)
-
-def print_solution(puzzle, solution):
-    for word in puzzle:
-        print(' '.join(solution.get(letter, letter) for letter in word))
-    print()
 
 # Define the puzzle: SEND + MORE = MONEY
 puzzle = ('SEND', 'MORE', 'MONEY')
@@ -34,12 +42,13 @@ end_time = time.time()
 
 if solution:
     print("Backtracking solution:")
-    print_solution(puzzle, solution)
+    for word in puzzle:
+        print(' '.join(solution.get(letter, letter) for letter in word))
+    print()
 else:
     print("No solution found.")
 
 print(f"Time taken for backtracking: {end_time - start_time} seconds")
-
 import random
 
 def initial_solution(letters):
