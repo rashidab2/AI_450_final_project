@@ -1,4 +1,3 @@
-from itertools import permutations
 import time
 
 def solve_cryptarithmetic_backtracking(puzzle):
