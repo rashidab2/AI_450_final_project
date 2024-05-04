@@ -1,7 +1,6 @@
 import numpy as np
 import time
 import random
-from collections import deque
 
 # Backtracking Search for Sudoku
 def is_valid(board, row, col, num):
@@ -108,36 +107,6 @@ def get_neighbors(board, original_board, tabu_list):
     return neighbors
 
 def tabu_search(board, tabu_size=50, time_limit=60):
-    original_board = np.array(board, dtype=int)
-    current_solution = initial_solution(original_board)
-    
-    if is_valid_board(current_solution):
-        return current_solution  # If the initial board is already valid
-    
-    tabu_list = [tuple(map(tuple, current_solution))]  # Initialize tabu list with the initial solution
-
-    while True:
-        neighbors = get_neighbors(current_solution, original_board, tabu_list)
-        if not neighbors:
-            current_solution = initial_solution(original_board)  # Restart if no neighbors
-            continue
-
-        for neighbor in neighbors:
-            if is_valid_board(neighbor):
-                return neighbor  # Return the first valid board found
-
-        # Update the current solution to a random neighbor (not necessarily a better one)
-        current_solution = random.choice(neighbors)
-
-        # Convert the current solution to a tuple of tuples and add it to the tabu list
-        current_config = tuple(map(tuple, current_solution))
-        tabu_list.append(current_config)
-
-        # Ensure the tabu list doesn't exceed its size limit
-        if len(tabu_list) > tabu_size:
-            tabu_list.pop(0)     
-
-'''def tabu_search(board, tabu_size=50, time_limit=60):
     start_time = time.time()  # Record the start time
     original_board = np.array(board, dtype=int)
     current_solution = initial_solution(original_board)
@@ -175,10 +144,7 @@ def tabu_search(board, tabu_size=50, time_limit=60):
 
     # If the time limit is reached, return the current solution even if it's not valid
     return current_solution        
-# This solution was implemented because the time it take to reach a solution is far to much, 
-#I stop it right at the time_limit for testing purpose, it was runned without the time limit
-It takes awhile.
-'''
+
 # Example Sudoku board
 board1 = [
         [5, 3, 0, 0, 7, 0, 0, 0, 0],
