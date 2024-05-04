@@ -98,7 +98,6 @@ def tabu_search(s1, s2, s3, tabu_tenure):
             continue
         # Evaluate neighbors and select one randomly
         # Since we are not necessarily looking for the best, but just a valid one
-        # we can pick any neighbor that improves upon the current solution or is not worse.
         neighbors.sort(key=lambda sol: evaluate(sol, s1, s2, s3))
         for neighbor in neighbors:
             if evaluate(neighbor, s1, s2, s3) <= current_evaluation:
@@ -110,7 +109,6 @@ def tabu_search(s1, s2, s3, tabu_tenure):
             tabu_list.pop(0)
         return tabu_list
 #Note that tabu search sometimes doesn't come up with a valid solution 
-# Other function definitions (initial_solution, evaluate, get_neighbors) remain unchanged.
 # Define the puzzle: SEND + MORE = MONEY
 s1 = "SEND"
 s2 = "MORE"
