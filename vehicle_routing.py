@@ -33,12 +33,6 @@ class VehicleRoutingProblem:
                 if len(route) < self.vehicle_capacity:
                     route.append(loc)
                     break
-
-        # If there are still unassigned locations, it means all vehicles are at full capacity
-        # You may need to increase the number of vehicles or vehicle capacity
-
-        # Now, attempt to balance the routes in terms of the number of locations
-        # Calculate the average number of locations per route
         average_locations = sum(len(route) for route in routes) // len(routes)
         for route in routes:
             while len(route) > average_locations + 1:
@@ -140,28 +134,24 @@ class VehicleRoutingProblem:
         self.best_routes = None
         self.best_cost = float('inf')
         self.current_routes = [[] for _ in range(self.num_vehicles)]
-        self.branch_and_bound(0, set(range(len(self.delivery_locations))), 0)
+        self.branch_and_bound(0, set(range(len(self.delivery_locations))), 0,)
         return self.best_routes
 
-    def branch_and_bound(self, vehicle_index, remaining_locations, current_cost):
+    def branch_and_bound(self, vehicle_index, remaining_locations, current_cost,):
         # Calculate lower bound for the remaining locations
         lower_bound = self.calculate_lower_bound(remaining_locations, current_cost)
-        
         # If the lower bound is higher than the best cost, prune this branch
         if lower_bound >= self.best_cost:
             return
-
         # If all locations are assigned, update the best solution if needed
         if not remaining_locations:
             if current_cost < self.best_cost:
                 self.best_cost = current_cost
                 self.best_routes = [list(route) for route in self.current_routes]
             return
-
         # If all vehicles are used, this branch cannot provide a better solution
         if vehicle_index >= self.num_vehicles:
             return
-
         for location_index in remaining_locations:
             if len(self.current_routes[vehicle_index]) < self.vehicle_capacity:
                 # Calculate the cost of adding the current location to the route
@@ -178,13 +168,11 @@ class VehicleRoutingProblem:
             self.branch_and_bound(vehicle_index + 1, remaining_locations, current_cost)
 
     def calculate_lower_bound(self, remaining_locations, current_cost):
-        # Implement a method to calculate a lower bound on the current_cost
-        # with the remaining locations. This could be as simple as the sum of
-        # the shortest distances of all remaining locations to the depot or
-        # to their nearest neighbor.
-        
-        # Placeholder for lower bound calculation logic
-        return current_cost
+        lb = current_cost
+        for loc_index in remaining_locations:
+            distance_to_depot = self.calculate_distance(self.depot, self.delivery_locations[loc_index])
+            lb += 2 * distance_to_depot  # go to the location and back to the depot
+        return lb
 
     def calculate_added_cost(self, vehicle_index, location_index):
         # Calculate the additional cost incurred by adding a new location to the current route
@@ -207,14 +195,9 @@ delivery_locations = [(228, 0),(912, 0),
 depot = (456, 320)
 vehicle_capacity = 10
 
-#vrp = VehicleRoutingProblem(num_vehicles, depot, delivery_locations, vehicle_capacity)
-#optimized_routes = vrp.solve()
 vrp = VehicleRoutingProblem(num_vehicles, depot, delivery_locations, vehicle_capacity)
-optimized_routes = vrp.solve_with_branch_and_bound()
-# Assuming optimized_routes is a list of routes where each route is a list of delivery location indices.
-# Also assuming calculate_route_cost returns the distance of the route in meters.
-
-print("Optimized Routes:")
+optimized_routes = vrp.solve()
+print("Tabu Optimized Routes:")
 for i, route in enumerate(optimized_routes):
     # Find indices for the locations in the route
     print(route)
@@ -230,6 +213,29 @@ for i, route in enumerate(optimized_routes):
     # Calculate the total distance of the route using the indices
     route_locations = [vrp.depot] + [vrp.delivery_locations[index-1] for index in route_indices[1:-1]] + [vrp.depot]
     route_distance = vrp.calculate_route_cost(route_locations)
+    # Print the route information using indices and the calculated distance
+    print(f"Route for vehicle {i + 1}:")
+    print(route_str)
+    print(f"Distance of the route: {route_distance}m\n")
+
+vrp2 = VehicleRoutingProblem(num_vehicles, depot, delivery_locations, vehicle_capacity)
+back_optimized_routes = vrp2.solve_with_branch_and_bound()
+print("Backtracking Optimized Routes:")
+for i, route in enumerate(back_optimized_routes):
+    # Find indices for the locations in the route
+    print(route)
+    route_indices = [0]  # Start with the depot index
+    for loc in route:
+        # Find the index of the location in the delivery_locations list
+        index = vrp2.delivery_locations.index(loc)
+        route_indices.append(index+1)  # Add 1 because indices are 0-based and we want to start from 1
+    route_indices.append(0)  # End with the depot index
+
+    # Convert the route indices to a string representation
+    route_str = ' -> '.join(str(index) for index in route_indices)
+    # Calculate the total distance of the route using the indices
+    route_locations = [vrp2.depot] + [vrp2.delivery_locations[index-1] for index in route_indices[1:-1]] + [vrp2.depot]
+    route_distance = vrp2.calculate_route_cost(route_locations)
     # Print the route information using indices and the calculated distance
     print(f"Route for vehicle {i + 1}:")
     print(route_str)
