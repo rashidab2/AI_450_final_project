@@ -94,7 +94,7 @@ def get_neighbors(board, original_board, tabu_list):
     n = 9
 
     # Instead of checking all possible swaps, perform a smaller number of swaps
-    num_swaps = 5  # You can tune this parameter
+    num_swaps = 5  
     for _ in range(num_swaps):
         i, j = random.choice([(x, y) for x in range(n) for y in range(n) if original_board[x][y] == 0])
         k, l = random.choice([(x, y) for x in range(n) for y in range(n) if original_board[x][y] == 0])
