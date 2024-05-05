@@ -74,7 +74,7 @@ class VehicleRoutingProblem:
                 if i in used_indices and j in used_indices:
                     break
         routes = self.balance_routes(routes)
-        # Optimize routes (e.g., using nearest neighbor algorithm
+        # Optimize routes
         optimized_routes = self.optimize_routes(routes)
         return optimized_routes
 
@@ -184,7 +184,7 @@ class VehicleRoutingProblem:
 
 
 
-# Example usage
+
 num_vehicles = 4
 delivery_locations = [(228, 0),(912, 0),
                       (0, 80),(114, 80),(570, 160),
